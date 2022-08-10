@@ -35,13 +35,14 @@ async function getEmotes(check) {
 
     // const proxyurl = 'https://cors-anywhere.herokuapp.com/';
     const proxyurl = "https://tpbcors.herokuapp.com/";
+    const user_agent = "https://g-showemote-fork.netlify.app";
     let twitchID;
     let totalErrors = [];
 
     // get channel twitch ID
     let res = await fetch(proxyurl + "https://api.ivr.fi/twitch/resolve/" + channel, {
         method: "GET",
-        headers: { "User-Agent": "api.roaringiron.com/emoteoverlay" },
+        headers: { "User-Agent": "https://g-showemote-fork.netlify.app/" },
     }).then(returnResponse, logError);
     if (!res.error || res.status == 200) {
         twitchID = res.id;
@@ -187,9 +188,10 @@ let minStreak = getUrlParam("minStreak", 5) > 2 ? getUrlParam("minStreak", 5) : 
 let streakEnabled = getUrlParam("streakEnabled", 1); // allows user to enable/disable the streak module
 let showEmoteEnabled = getUrlParam("showEmoteEnabled", 1); // allows user to enable/disable the showEmote module
 let showEmoteSizeMultiplier = getUrlParam("showEmoteSizeMultiplier", 1); // allows user to change the showEmote emote size multipler
-let sevenTVEnabled = getUrlParam("7tv", 0); // enables or disables support for 7tv.app emotes (only loads in channel emotes, not global)
+let sevenTVEnabled = getUrlParam("7tv", 1); // enables or disables support for 7tv.app emotes (only loads in channel emotes, not global)
 let showEmoteCooldown = getUrlParam("showEmoteCooldown", 6); // sets the cooldown for the showEmote command (in seconds)
 let emoteStreakText = decodeURIComponent(getUrlParam("emoteStreakText", "streak!")); // sets the ending text for the emote streak overlay (set to empty string to disable)
+let blocklisted_emotes = getUrlParam("blocklisted_emotes", "").split(",");
 log(`The streak module is ${streakEnabled} and the showEmote module is ${showEmoteEnabled}`);
 let streakCD = new Date().getTime();
 
@@ -318,7 +320,14 @@ function showEmoteEvent(emote) {
             $("#showEmote").css("top", xy[1] + "px");
             $("#showEmote").css("left", xy[0] + "px");
             log("creating showEmote");
-            var img = $("<img />", { src: image, style: `transform: scale(${showEmoteSizeMultiplier}, ${showEmoteSizeMultiplier})` });
+            // 1% chance of getting a big emote
+            // if so, multiplier will be 3x-5x
+            let _multiplier = showEmoteSizeMultiplier;
+            if (Math.random() < 0.01) {
+                let amount = 3 + Math.random() * 2;
+                _multiplier = showEmoteSizeMultiplier * amount;
+            }
+            var img = $("<img />", { src: image, style: `transform: scale(${_multiplier}, ${_multiplier})` });
             img.appendTo("#showEmote");
             gsap.to("#showEmote", 1, { autoAlpha: 1, onComplete: anim2 });
             function anim2() {
@@ -361,9 +370,10 @@ function connect() {
         if (messageFull.length > 12) {
             let messageBefore = messageFull[messageFull.length - 1].split(`${channel} :`).pop(); // gets the raw message
             let message = messageBefore.split(" ").includes("ACTION") ? messageBefore.split("ACTION ").pop().split("")[0] : messageBefore; // checks for the /me ACTION usage and gets the specific message
-            if (message.toLowerCase().startsWith("!showemote") || message.toLowerCase().startsWith("!#showemote")) {
+            for (const e of blocklisted_emotes)
+                if (message.split(" ").includes(e)) { console.log("blocked emote", e); return };
+            if (message.toLowerCase().startsWith("!showemote") || message.toLowerCase().startsWith("!#showemote"))
                 showEmote(message, messageFull);
-            }
             findEmotes(message, messageFull);
         }
         if (messageFull.length == 1 && messageFull[0].startsWith("PING")) {
