@@ -35,14 +35,14 @@ async function getEmotes(check) {
 
     // const proxyurl = 'https://cors-anywhere.herokuapp.com/';
     const proxyurl = "https://tpbcors.herokuapp.com/";
-    const user_agent = "https://g-showemote-fork.netlify.app";
+    const user_agent = debug ? "http://127.0.0.1:5500/" : "https://g-showemote-fork.netlify.app";
     let twitchID;
     let totalErrors = [];
 
     // get channel twitch ID
     let res = await fetch(proxyurl + "https://api.ivr.fi/twitch/resolve/" + channel, {
         method: "GET",
-        headers: { "User-Agent": "https://g-showemote-fork.netlify.app/" },
+        headers: { "User-Agent": user_agent },
     }).then(returnResponse, logError);
     if (!res.error || res.status == 200) {
         twitchID = res.id;
@@ -184,7 +184,7 @@ async function getEmotes(check) {
 let currentStreak = { streak: 1, emote: null, emoteURL: null }; // the current emote streak being used in chat
 let currentEmote; // the current emote being used in chat
 let showEmoteCooldownRef = new Date(); // the emote shown from using the !showemote <emote> command
-let minStreak = getUrlParam("minStreak", 5) > 2 ? getUrlParam("minStreak", 5) : 5; // minimum emote streak to trigger overlay effects (Minimum value allowed is 3)
+let minStreak = getUrlParam("minStreak", 3) > 2 ? getUrlParam("minStreak", 3) : 3; // minimum emote streak to trigger overlay effects (Minimum value allowed is 3)
 let streakEnabled = getUrlParam("streakEnabled", 1); // allows user to enable/disable the streak module
 let showEmoteEnabled = getUrlParam("showEmoteEnabled", 1); // allows user to enable/disable the showEmote module
 let showEmoteSizeMultiplier = getUrlParam("showEmoteSizeMultiplier", 1); // allows user to change the showEmote emote size multipler
