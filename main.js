@@ -396,19 +396,19 @@ function connect() {
     chat.onmessage = function (event) {
         let messageFull = event.data.split(/\r\n/)[0].split(`;`);
         if (messageFull.length > 12) {
-            if (
+            let messageBefore = messageFull[messageFull.length - 1].split(`${channel} :`).pop(); // gets the raw message
+            let message = messageBefore.split(" ").includes("ACTION") ? messageBefore.split("ACTION ").pop().split("")[0] : messageBefore; // checks for the /me ACTION usage and gets the specific message
+            if ((
                 messageFull[3].includes("aRandomFinn") ||
                 messageFull[3].includes("pepega00000") ||
                 messageFull[1].includes("broadcaster") ||
                 messageFull[1].includes("vip") ||
-                messageFull[1].includes("moderator")
+                messageFull[1].includes("moderator")) && (message === "!r" || message === "!refreshoverlay")
             ) {
                 getEmotes();
                 console.log('Refreshing emotes...');
                 return;
             }
-            let messageBefore = messageFull[messageFull.length - 1].split(`${channel} :`).pop(); // gets the raw message
-            let message = messageBefore.split(" ").includes("ACTION") ? messageBefore.split("ACTION ").pop().split("")[0] : messageBefore; // checks for the /me ACTION usage and gets the specific message
             for (const e of blocklisted_emotes)
                 if (message.split(" ").includes(e)) { console.log("blocked emote", e); return };
             if (message.toLowerCase().startsWith("!showemote") || message.toLowerCase().startsWith("!#showemote"))
