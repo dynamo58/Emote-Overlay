@@ -21,11 +21,40 @@ function getUrlParam(parameter, defaultvalue) {
     return urlparameter;
 }
 
-let channel = getUrlParam("channel", "abc123").toLowerCase();
+let channel = getUrlParam("channel", "forsen").toLowerCase();
 log(channel);
-let emotes = [];
+window.emotes = [];
+
+const init_7tv_eventsub = () => {
+    const source = new EventSource(`https://events.7tv.app/v1/channel-emotes?&channel=${channel}`);
+
+    source.addEventListener(
+        "update",
+        (e) => {
+            // This is a JSON payload matching the type for the specified event channel
+            const data = JSON.parse(e.data);
+
+            if (data.action === "REMOVE") {
+                console.log(`removing ${data.name}`)
+                window.emotes = window.emotes.filter(e => e.emoteName !== data.name)
+            }
+
+            if (data.action === "ADD") {
+                console.log(`adding ${data.name}`)
+                window.emotes.push({
+                    emoteName: data.emote.name,
+                    emoteURL: data.emote.urls[1][1],
+                })
+            }
+        },
+        false
+    );
+}
+
 
 async function getEmotes(check) {
+    window.emotes = [];
+
     function returnResponse(response) {
         return response.json();
     }
@@ -65,7 +94,7 @@ async function getEmotes(check) {
                     emoteName: res.sets[setName[k]].emoticons[i].name,
                     emoteURL: "https://" + emoteURL.split("//").pop(),
                 };
-                emotes.push(emote);
+                window.emotes.push(emote);
             }
         }
     } else {
@@ -86,7 +115,7 @@ async function getEmotes(check) {
                     emoteName: res.sets[setName[k]].emoticons[i].name,
                     emoteURL: "https://" + emoteURL.split("//").pop(),
                 };
-                emotes.push(emote);
+                window.emotes.push(emote);
             }
         }
     } else {
@@ -102,16 +131,16 @@ async function getEmotes(check) {
                 emoteName: res.channelEmotes[i].code,
                 emoteURL: `https://cdn.betterttv.net/emote/${res.channelEmotes[i].id}/2x`,
             };
-            emotes.push(emote);
+            window.emotes.push(emote);
         }
         for (var i = 0; i < res.sharedEmotes.length; i++) {
             let emote = {
                 emoteName: res.sharedEmotes[i].code,
                 emoteURL: `https://cdn.betterttv.net/emote/${res.sharedEmotes[i].id}/2x`,
             };
-            emotes.push(emote);
+            window.emotes.push(emote);
         }
-        log(emotes);
+        log(window.emotes);
     } else {
         totalErrors.push("Error getting bttv emotes");
     }
@@ -125,9 +154,9 @@ async function getEmotes(check) {
                 emoteName: res[i].code,
                 emoteURL: `https://cdn.betterttv.net/emote/${res[i].id}/2x`,
             };
-            emotes.push(emote);
+            window.emotes.push(emote);
         }
-        log(emotes);
+        log(window.emotes);
     } else {
         totalErrors.push("Error getting global bttv emotes");
     }
@@ -145,7 +174,7 @@ async function getEmotes(check) {
                         emoteName: res[i].name,
                         emoteURL: res[i].urls[1][1],
                     };
-                    emotes.push(emote);
+                    window.emotes.push(emote);
                 }
             }
         } else {
@@ -164,7 +193,7 @@ async function getEmotes(check) {
                         emoteName: res[i].name,
                         emoteURL: res[i].urls[1][1],
                     };
-                    emotes.push(emote);
+                    window.emotes.push(emote);
                 }
             }
         } else {
@@ -177,7 +206,7 @@ async function getEmotes(check) {
         });
         $("#errors").html(totalErrors.join("<br />")).delay(5000).fadeOut(300);
     } else {
-        $("#errors").html(`Successfully loaded ${emotes.length} emotes.`).delay(2000).fadeOut(300);
+        $("#errors").html(`Successfully loaded ${window.emotes.length} emotes.`).delay(2000).fadeOut(300);
     }
 }
 
@@ -196,7 +225,7 @@ log(`The streak module is ${streakEnabled} and the showEmote module is ${showEmo
 let streakCD = new Date().getTime();
 
 function findEmotes(message, messageFull) {
-    if (emotes.length !== 0) {
+    if (window.emotes.length !== 0) {
         let emoteUsedPos = messageFull[4].startsWith("emotes=") ? 4 : messageFull[5].startsWith("emote-only=") ? 6 : 5;
         let emoteUsed = messageFull[emoteUsedPos].split("emotes=").pop();
         messageSplit = message.split(" ");
@@ -216,7 +245,7 @@ function findEmotes(message, messageFull) {
         }
 
         function findEmoteInMessage(message) {
-            for (const emote of emotes.map((a) => a.emoteName)) {
+            for (const emote of window.emotes.map((a) => a.emoteName)) {
                 if (message.includes(emote)) {
                     return emote;
                 }
@@ -224,7 +253,7 @@ function findEmotes(message, messageFull) {
             return null;
         }
         function findEmoteURLInEmotes(emote) {
-            for (const emoteObj of emotes) {
+            for (const emoteObj of window.emotes) {
                 if (emoteObj.emoteName == emote) {
                     return emoteObj.emoteURL;
                 }
@@ -263,7 +292,7 @@ function streakEvent() {
 }
 
 function showEmote(message, messageFull) {
-    if (emotes.length !== 0 && showEmoteEnabled == 1) {
+    if (window.emotes.length !== 0 && showEmoteEnabled == 1) {
         let emoteUsedPos = messageFull[4].startsWith("emotes=") ? 4 : 5;
         let emoteUsedID = messageFull[emoteUsedPos].split("emotes=").pop();
         messageSplit = message.split(" ");
@@ -279,7 +308,7 @@ function showEmote(message, messageFull) {
             return showEmoteEvent({ emoteName: emoteUsed, emoteURL: emoteLink });
         }
         function findEmoteInMessage(message) {
-            for (const emote of emotes.map((a) => a.emoteName)) {
+            for (const emote of window.emotes.map((a) => a.emoteName)) {
                 if (message.includes(emote)) {
                     return emote;
                 }
@@ -287,7 +316,7 @@ function showEmote(message, messageFull) {
             return null;
         }
         function findEmoteURLInEmotes(emote) {
-            for (const emoteObj of emotes) {
+            for (const emoteObj of window.emotes) {
                 if (emoteObj.emoteName == emote) {
                     return emoteObj.emoteURL;
                 }
@@ -366,8 +395,18 @@ function connect() {
 
     chat.onmessage = function (event) {
         let messageFull = event.data.split(/\r\n/)[0].split(`;`);
-        log(messageFull);
         if (messageFull.length > 12) {
+            if (
+                messageFull[3].includes("aRandomFinn") ||
+                messageFull[3].includes("pepega00000") ||
+                messageFull[1].includes("broadcaster") ||
+                messageFull[1].includes("vip") ||
+                messageFull[1].includes("moderator")
+            ) {
+                getEmotes();
+                console.log('Refreshing emotes...');
+                return;
+            }
             let messageBefore = messageFull[messageFull.length - 1].split(`${channel} :`).pop(); // gets the raw message
             let message = messageBefore.split(" ").includes("ACTION") ? messageBefore.split("ACTION ").pop().split("")[0] : messageBefore; // checks for the /me ACTION usage and gets the specific message
             for (const e of blocklisted_emotes)
@@ -382,3 +421,5 @@ function connect() {
         }
     };
 }
+
+init_7tv_eventsub();
