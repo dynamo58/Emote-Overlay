@@ -1,9 +1,4 @@
 let debug = false;
-function log(message) {
-    if (debug) {
-        console.log(message);
-    }
-}
 
 // Get URL Parameters (Credit to html-online.com)
 function getUrlVars() {
@@ -21,8 +16,8 @@ function getUrlParam(parameter, defaultvalue) {
     return urlparameter;
 }
 
-let channel = getUrlParam("channel", "forsen").toLowerCase();
-log(channel);
+let channel = getUrlParam("channel", "gkey").toLowerCase();
+console.log(channel);
 window.emotes = [];
 
 const init_7tv_eventsub = () => {
@@ -59,28 +54,34 @@ async function getEmotes(check) {
         return response.json();
     }
     function logError(error) {
-        log(error.message);
+        console.log(error.message);
     }
 
     // const proxyurl = 'https://cors-anywhere.herokuapp.com/';
-    const proxyurl = "https://tpbcors.herokuapp.com/";
+    // const proxyurl = "https://tpbcors.herokuapp.com/";
+    const proxyurl = "";
     const user_agent = debug ? "http://127.0.0.1:5500/" : "https://g-showemote-fork.netlify.app";
     let twitchID;
     let totalErrors = [];
 
     // get channel twitch ID
-    let res = await fetch(proxyurl + "https://api.ivr.fi/twitch/resolve/" + channel, {
-        method: "GET",
-        headers: { "User-Agent": user_agent },
-    }).then(returnResponse, logError);
-    if (!res.error || res.status == 200) {
-        twitchID = res.id;
-    } else {
-        totalErrors.push("Error getting twitch ID");
+
+    try {
+        await fetch(proxyurl + "https://api.ivr.fi/twitch/resolve/" + channel, {
+            method: "GET",
+            headers: { "User-Agent": user_agent },
+        }).then(returnResponse, logError);
+        if (!res.error || res.status == 200) {
+            twitchID = res.id;
+        } else {
+            totalErrors.push("Error getting twitch ID");
+        }
+    } catch {
+        twitchID = 40295380;
     }
 
     // get FFZ emotes
-    res = await fetch(proxyurl + "https://api.frankerfacez.com/v1/room/" + channel, {
+    let res = await fetch(proxyurl + "https://api.frankerfacez.com/v1/room/" + channel, {
         method: "GET",
     }).then(returnResponse, logError);
     if (!res.error) {
@@ -140,7 +141,7 @@ async function getEmotes(check) {
             };
             window.emotes.push(emote);
         }
-        log(window.emotes);
+        console.log(window.emotes);
     } else {
         totalErrors.push("Error getting bttv emotes");
     }
@@ -156,7 +157,7 @@ async function getEmotes(check) {
             };
             window.emotes.push(emote);
         }
-        log(window.emotes);
+        console.log(window.emotes);
     } else {
         totalErrors.push("Error getting global bttv emotes");
     }
@@ -221,7 +222,7 @@ let sevenTVEnabled = getUrlParam("7tv", 1); // enables or disables support for 7
 let showEmoteCooldown = getUrlParam("showEmoteCooldown", 6); // sets the cooldown for the showEmote command (in seconds)
 let emoteStreakText = decodeURIComponent(getUrlParam("emoteStreakText", "streak!")); // sets the ending text for the emote streak overlay (set to empty string to disable)
 let blocklisted_emotes = getUrlParam("blocklisted_emotes", "").split(",");
-log(`The streak module is ${streakEnabled} and the showEmote module is ${showEmoteEnabled}`);
+console.log(`The streak module is ${streakEnabled} and the showEmote module is ${showEmoteEnabled}`);
 let streakCD = new Date().getTime();
 
 function findEmotes(message, messageFull) {
@@ -328,7 +329,7 @@ function showEmote(message, messageFull) {
 
 function showEmoteEvent(emote) {
     let secondsDiff = (new Date().getTime() - new Date(showEmoteCooldownRef).getTime()) / 1000;
-    log(secondsDiff);
+    console.log(secondsDiff);
     if (secondsDiff > parseInt(showEmoteCooldown)) {
         showEmoteCooldownRef = new Date();
         var image = emote.emoteURL;
@@ -348,7 +349,7 @@ function showEmoteEvent(emote) {
             $("#showEmote").css("position", "absolute");
             $("#showEmote").css("top", xy[1] + "px");
             $("#showEmote").css("left", xy[0] + "px");
-            log("creating showEmote");
+            console.log("creating showEmote");
             // 1% chance of getting a big emote
             // if so, multiplier will be 3x-5x
             let _multiplier = showEmoteSizeMultiplier;
@@ -388,7 +389,7 @@ function connect() {
     };
 
     chat.onerror = function () {
-        log("There was an error.. disconnected from the IRC");
+        console.log("There was an error.. disconnected from the IRC");
         chat.close();
         chat.connect();
     };
@@ -416,7 +417,7 @@ function connect() {
             findEmotes(message, messageFull);
         }
         if (messageFull.length == 1 && messageFull[0].startsWith("PING")) {
-            log("sending pong");
+            console.log("sending pong");
             chat.send("PONG");
         }
     };
