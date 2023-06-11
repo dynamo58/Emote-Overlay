@@ -17,6 +17,7 @@ function getUrlParam(parameter, defaultvalue) {
 }
 
 let channel = getUrlParam("channel", "gkey").toLowerCase();
+let channel_id = 40295380;
 console.log(channel);
 window.emotes = [];
 
@@ -163,24 +164,21 @@ async function getEmotes(check) {
     }
     if (sevenTVEnabled == 1) {
         // get all 7TV emotes
-        res = await fetch(proxyurl + `https://api.7tv.app/v2/users/${channel}/emotes`, {
+        res = await fetch(proxyurl + `https://api.7tv.app/v3/users/twitch/${channel_id}`, {
             method: "GET",
-        }).then(returnResponse, logError);
-        if (!res.error || res.status == 200) {
-            if (res.Status === 404) {
-                totalErrors.push("Error getting 7tv emotes");
-            } else {
+        }).then(returnResponse, logError)
+            .then((result) => {
+                result = result.emote_set.emotes;
+                console.log(result);
+
                 for (var i = 0; i < res.length; i++) {
                     let emote = {
-                        emoteName: res[i].name,
-                        emoteURL: res[i].urls[1][1],
+                        emoteName: result[i].name,
+                        emoteURL: `https://cdn.7tv.app/emote/${result[i].id}/2x.webp`,
                     };
                     window.emotes.push(emote);
                 }
-            }
-        } else {
-            totalErrors.push("Error getting 7tv emotes");
-        }
+            });
         // get all 7TV global emotes
         res = await fetch(proxyurl + `https://api.7tv.app/v2/emotes/global`, {
             method: "GET",
