@@ -169,9 +169,8 @@ async function getEmotes(check) {
         }).then(returnResponse, logError)
             .then((result) => {
                 result = result.emote_set.emotes;
-                console.log(result);
 
-                for (var i = 0; i < res.length; i++) {
+                for (var i = 0; i < result.length; i++) {
                     let emote = {
                         emoteName: result[i].name,
                         emoteURL: `https://cdn.7tv.app/emote/${result[i].id}/2x.webp`,
