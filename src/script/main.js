@@ -1,25 +1,15 @@
-let debug = false;
+let debug = true;
 
-// Get URL Parameters (Credit to html-online.com)
-function getUrlVars() {
-    var vars = {};
-    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
-        vars[key] = value;
-    });
-    return vars;
-}
-function getUrlParam(parameter, defaultvalue) {
-    var urlparameter = defaultvalue;
-    if (window.location.href.indexOf(parameter) > -1) {
-        urlparameter = getUrlVars()[parameter];
-    }
-    return urlparameter;
-}
+const channel = get_url_param("channel", _DEFAULT_CHANNEL_NAME).toLowerCase();
+let blocklisted_emotes = get_url_param("blocklisted_emotes", "").split(",");
+let min_streak = get_url_param("minStreak", _DEFAULT_MIN_STREAK_REQUIRED) > 2 ? get_url_param("minStreak", _DEFAULT_MIN_STREAK_REQUIRED) : 3;
+let streakEnabled = get_url_param("streakEnabled", _DEFAULT_STREAK_ENABLED); // allows user to enable/disable the streak module
+let showEmoteEnabled = get_url_param("showEmoteEnabled", _DEFAULT_SHOWEMOTE_ENABLED); // allows user to enable/disable the showEmote module
+let showEmoteSizeMultiplier = get_url_param("showEmoteSizeMultiplier", _DEFAULT_EMOTESIZE_MULTIPLIER); // allows user to change the showEmote emote size multipler
+let showEmoteCooldown = get_url_param("showEmoteCooldown", _DEFAULT_SHOWEMOTE_COOLDOWN); // sets the cooldown for the showEmote command (in seconds)
 
-let channel = getUrlParam("channel", "gkey").toLowerCase();
-console.log(channel);
+
 window.emotes = [];
-
 const init_7tv_eventsub = () => {
     const source = new EventSource(`https://events.7tv.app/v1/channel-emotes?&channel=${channel}`);
 
@@ -47,25 +37,24 @@ const init_7tv_eventsub = () => {
 }
 
 
-async function getEmotes(check) {
+async function get_emotes() {
     window.emotes = [];
 
     function returnResponse(response) {
         return response.json();
     }
     function logError(error) {
-        console.log(error.message);
+        log("ERROR:", error.message);
     }
 
     // const proxyurl = 'https://cors-anywhere.herokuapp.com/';
-    // const proxyurl = "https://tpbcors.herokuapp.com/";
-    const proxyurl = "";
-    const user_agent = debug ? "http://127.0.0.1:5500/" : "https://g-showemote-fork.netlify.app";
+    const proxyurl = "https://tpbcors.herokuapp.com/";
+    // const proxyurl = "";
+    const user_agent = debug ? "http://127.0.0.1:5501" : "https://g-showemote-fork.netlify.app";
     let twitchID;
     let totalErrors = [];
 
     // get channel twitch ID
-
     try {
         await fetch(proxyurl + "https://api.ivr.fi/twitch/resolve/" + channel, {
             method: "GET",
@@ -77,13 +66,15 @@ async function getEmotes(check) {
             totalErrors.push("Error getting twitch ID");
         }
     } catch {
-        twitchID = 40295380;
+        twitchID = _DEFAULT_CHANNEL_USERID;
     }
 
     // get FFZ emotes
     let res = await fetch(proxyurl + "https://api.frankerfacez.com/v1/room/" + channel, {
         method: "GET",
+        headers: { "User-Agent": user_agent },
     }).then(returnResponse, logError);
+
     if (!res.error) {
         let setName = Object.keys(res.sets);
         for (var k = 0; k < setName.length; k++) {
@@ -161,54 +152,46 @@ async function getEmotes(check) {
     } else {
         totalErrors.push("Error getting global bttv emotes");
     }
-    if (sevenTVEnabled == 1) {
-        let channel_id = await fetch(`https://dynamo58-relay.deno.dev/twitch`, {
-            method: "POST",
-            mode: 'cors',
-            body: JSON.stringify({ endpoint: `users?login=${channel}` }),
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        })
 
-        channel_id = (await (channel_id).json()).data.data[0].id
+	// get all 7TV emotes
+	res = await fetch(proxyurl + `https://api.7tv.app/v2/users/${channel}/emotes`, {
+		method: "GET",
+	}).then(returnResponse, logError);
+	if (!res.error || res.status == 200) {
+		if (res.Status === 404) {
+			totalErrors.push("Error getting 7tv emotes");
+		} else {
+			for (var i = 0; i < res.length; i++) {
+				let emote = {
+					emoteName: res[i].name,
+					emoteURL: res[i].urls[1][1],
+				};
+				window.emotes.push(emote);
+			}
+		}
+	} else {
+		totalErrors.push("Error getting 7tv emotes");
+	}
 
-        // get all 7TV emotes
-        res = await fetch(proxyurl + `https://api.7tv.app/v3/users/twitch/${channel_id}`, {
-            method: "GET",
-        }).then(returnResponse, logError)
-            .then((result) => {
-                result = result.emote_set.emotes;
-
-                for (var i = 0; i < result.length; i++) {
-                    let emote = {
-                        emoteName: result[i].name,
-                        emoteURL: `https://cdn.7tv.app/emote/${result[i].id}/2x.webp`,
-                    };
-                    window.emotes.push(emote);
-                }
-            });
-        // get all 7TV global emotes
-        res = await fetch(proxyurl + `https://api.7tv.app/v2/emotes/global`, {
-            method: "GET",
-        }).then(returnResponse, logError);
-        if (!res.error || res.status == 200) {
-            if (res.Status === 404) {
-                totalErrors.push("Error getting 7tv global emotes");
-            } else {
-                for (var i = 0; i < res.length; i++) {
-                    let emote = {
-                        emoteName: res[i].name,
-                        emoteURL: res[i].urls[1][1],
-                    };
-                    window.emotes.push(emote);
-                }
-            }
-        } else {
-            totalErrors.push("Error getting 7tv global emotes");
-        }
-    }
+	// get all 7TV global emotes
+	res = await fetch(proxyurl + `https://api.7tv.app/v2/emotes/global`, {
+		method: "GET",
+	}).then(returnResponse, logError);
+	if (!res.error || res.status == 200) {
+		if (res.Status === 404) {
+			totalErrors.push("Error getting 7tv global emotes");
+		} else {
+			for (var i = 0; i < res.length; i++) {
+				let emote = {
+					emoteName: res[i].name,
+					emoteURL: res[i].urls[1][1],
+				};
+				window.emotes.push(emote);
+			}
+		}
+	} else {
+		totalErrors.push("Error getting 7tv global emotes");
+	}
     if (totalErrors.length > 0) {
         totalErrors.forEach((error) => {
             console.error(error);
@@ -219,20 +202,9 @@ async function getEmotes(check) {
     }
 }
 
-let currentStreak = { streak: 1, emote: null, emoteURL: null }; // the current emote streak being used in chat
-let currentEmote; // the current emote being used in chat
-let showEmoteCooldownRef = new Date(); // the emote shown from using the !showemote <emote> command
-let minStreak = getUrlParam("minStreak", 3) > 2 ? getUrlParam("minStreak", 3) : 3; // minimum emote streak to trigger overlay effects (Minimum value allowed is 3)
-let streakEnabled = getUrlParam("streakEnabled", 1); // allows user to enable/disable the streak module
-let showEmoteEnabled = getUrlParam("showEmoteEnabled", 1); // allows user to enable/disable the showEmote module
-let showEmoteSizeMultiplier = getUrlParam("showEmoteSizeMultiplier", 1); // allows user to change the showEmote emote size multipler
-let sevenTVEnabled = getUrlParam("7tv", 1); // enables or disables support for 7tv.app emotes (only loads in channel emotes, not global)
-let showEmoteCooldown = getUrlParam("showEmoteCooldown", 6); // sets the cooldown for the showEmote command (in seconds)
-let emoteStreakText = decodeURIComponent(getUrlParam("emoteStreakText", "streak!")); // sets the ending text for the emote streak overlay (set to empty string to disable)
-let blocklisted_emotes = getUrlParam("blocklisted_emotes", "").split(",");
-console.log(`The streak module is ${streakEnabled} and the showEmote module is ${showEmoteEnabled}`);
-let streakCD = new Date().getTime();
 
+
+let currentStreak = { streak: 1, emote: null, emoteURL: null }; // the current emote streak being used in chat
 function findEmotes(message, messageFull) {
     if (window.emotes.length !== 0) {
         let emoteUsedPos = messageFull[4].startsWith("emotes=") ? 4 : messageFull[5].startsWith("emote-only=") ? 6 : 5;
@@ -273,15 +245,16 @@ function findEmotes(message, messageFull) {
     }
 }
 
+let streakCD = new Date().getTime();
 function streakEvent() {
-    if (currentStreak.streak >= minStreak && streakEnabled == 1) {
+    if (currentStreak.streak >= min_streak && streakEnabled == 1) {
         $("#main").empty();
         $("#main").css("position", "absolute");
         $("#main").css("top", "600");
         $("#main").css("left", "35");
         var img = $("<img />", { src: currentStreak.emoteURL });
         img.appendTo("#main");
-        var streakLength = $("#main").append(" 󠀀  󠀀  x" + currentStreak.streak + " " + emoteStreakText);
+        var streakLength = $("#main").append(" 󠀀  󠀀  x" + currentStreak.streak + " streak!");
         streakLength.appendTo("#main");
         gsap.to("#main", 0.15, { scaleX: 1.2, scaleY: 1.2, onComplete: downscale });
         function downscale() {
@@ -335,6 +308,7 @@ function showEmote(message, messageFull) {
     }
 }
 
+let showEmoteCooldownRef = new Date();
 function showEmoteEvent(emote) {
     let secondsDiff = (new Date().getTime() - new Date(showEmoteCooldownRef).getTime()) / 1000;
     console.log(secondsDiff);
@@ -361,7 +335,7 @@ function showEmoteEvent(emote) {
             // 1% chance of getting a big emote
             // if so, multiplier will be 3x-5x
             let _multiplier = showEmoteSizeMultiplier;
-            if (Math.random() < 0.01) {
+            if (Math.random() < 0.05) {
                 let amount = 3 + Math.random() * 2;
                 _multiplier = showEmoteSizeMultiplier * amount;
             }
@@ -393,7 +367,7 @@ function connect() {
         chat.send("PASS oauth:xd123");
         chat.send("NICK justinfan123");
         chat.send("JOIN #" + channel);
-        getEmotes();
+        get_emotes();
     };
 
     chat.onerror = function () {
@@ -414,7 +388,8 @@ function connect() {
                 messageFull[1].includes("vip") ||
                 messageFull[1].includes("moderator")) && (message === "!r" || message === "!refreshoverlay")
             ) {
-                location.reload();
+                get_emotes();
+                console.log('Refreshing emotes...');
                 return;
             }
             for (const e of blocklisted_emotes)
