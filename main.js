@@ -1,6 +1,8 @@
 let debug = false;
+const proxyurl = "";
+// const proxyurl = 'https://cors-anywhere.herokuapp.com/';
+// const proxyurl = "https://tpbcors.herokuapp.com/";
 
-// Get URL Parameters (Credit to html-online.com)
 function getUrlVars() {
     var vars = {};
     var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function (m, key, value) {
@@ -20,33 +22,6 @@ let channel = getUrlParam("channel", "gkey").toLowerCase();
 console.log(channel);
 window.emotes = [];
 
-const init_7tv_eventsub = () => {
-    const source = new EventSource(`https://events.7tv.app/v1/channel-emotes?&channel=${channel}`);
-
-    source.addEventListener(
-        "update",
-        (e) => {
-            // This is a JSON payload matching the type for the specified event channel
-            const data = JSON.parse(e.data);
-
-            if (data.action === "REMOVE") {
-                console.log(`removing ${data.name}`)
-                window.emotes = window.emotes.filter(e => e.emoteName !== data.name)
-            }
-
-            if (data.action === "ADD") {
-                console.log(`adding ${data.name}`)
-                window.emotes.push({
-                    emoteName: data.emote.name,
-                    emoteURL: data.emote.urls[1][1],
-                })
-            }
-        },
-        false
-    );
-}
-
-
 async function getEmotes(check) {
     window.emotes = [];
 
@@ -57,10 +32,7 @@ async function getEmotes(check) {
         console.log(error.message);
     }
 
-    // const proxyurl = 'https://cors-anywhere.herokuapp.com/';
-    // const proxyurl = "https://tpbcors.herokuapp.com/";
-    const proxyurl = "";
-    const user_agent = debug ? "http://127.0.0.1:5500/" : "https://g-showemote-fork.netlify.app";
+    const user_agent = debug ? "http://127.0.0.1:5501/" : "https://g-showemote-fork.netlify.app";
     let twitchID;
     let totalErrors = [];
 
@@ -83,6 +55,7 @@ async function getEmotes(check) {
     // get FFZ emotes
     let res = await fetch(proxyurl + "https://api.frankerfacez.com/v1/room/" + channel, {
         method: "GET",
+        mode: "cors"
     }).then(returnResponse, logError);
     if (!res.error) {
         let setName = Object.keys(res.sets);
@@ -175,7 +148,7 @@ async function getEmotes(check) {
         channel_id = (await (channel_id).json()).data.data[0].id
 
         // get all 7TV emotes
-        res = await fetch(proxyurl + `https://api.7tv.app/v3/users/twitch/${channel_id}`, {
+        res = await fetch(proxyurl + `https://7tv.io/v3/users/twitch/${channel_id}`, {
             method: "GET",
         }).then(returnResponse, logError)
             .then((result) => {
@@ -190,7 +163,7 @@ async function getEmotes(check) {
                 }
             });
         // get all 7TV global emotes
-        res = await fetch(proxyurl + `https://api.7tv.app/v2/emotes/global`, {
+        res = await fetch(proxyurl + `https://7tv.io/v3/emote-sets/global`, {
             method: "GET",
         }).then(returnResponse, logError);
         if (!res.error || res.status == 200) {
@@ -432,5 +405,3 @@ function connect() {
         }
     };
 }
-
-init_7tv_eventsub();
