@@ -334,7 +334,7 @@ function showEmoteEvent(emote) {
             // 1% chance of getting a big emote
             // if so, multiplier will be 3x-5x
             let _multiplier = showEmoteSizeMultiplier;
-            if (Math.random() < 0.15) {
+            if (Math.random() < 0.01) {
                 let amount = 3 + Math.random() * 2;
                 _multiplier = showEmoteSizeMultiplier * amount;
             }
